@@ -1,0 +1,4 @@
+interface:
+  display_name: "GM Scene Handoff（独立安装版）"
+  short_description: "GMGame 场景双向合并与验收，独立安装，支持仓库根目录打开"
+  default_prompt: "使用个人目录中的 $gm-scene-handoff，先确认当前 GMGame 项目和合并方向。"
