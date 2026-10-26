@@ -38,6 +38,18 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
 
 > 请安装或更新 https://github.com/taozhang159/gm-scene-handoff 中的 gm-scene-handoff，使用仓库的一行命令；完成后运行 status，告诉我本地版本和安装路径。只安装更新，不执行场景合并。
 
+## 执行进度
+
+1.2.2 起，程序启动后实时显示 Python 检查、文件校验、备份和安装阶段；`status` 显示查询阶段。`--json` 不输出进度，便于程序读取。
+
+最前面的 GitHub 下载由 npx 执行，技能尚未启动，无法在这段时间输出自身进度。Windows PowerShell 可使用带即时提示和下载日志的一行命令：
+
+```powershell
+Write-Host '正在从 GitHub 获取技能，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main install
+```
+
+查询时将最后的 `install` 改成 `status`。这些是实际阶段和网络日志，不显示虚构的百分比。
+
 ## 附件离线安装
 
 1. 将附件下载到本地。
@@ -85,7 +97,7 @@ python -B -X utf8 "$unpacked/gm-scene-handoff/scripts/install.py" --global
 
 ## 版本、维护与回退
 
-**1.2.1**：在 1.2.0 的 npx 安装入口基础上，增加 `status` 本地版本和完整性查询、升级前后版本提示及简短安装提示词。保留无项目安装、幂等检查、校验、备份、失败回滚及配置保护。合并规则与工具逻辑沿用 1.1.1，安装器测试不代表真实场景合并或 Unity 业务回归。
+**1.2.2**：增加查询、校验、备份和安装的实时阶段提示，JSON 模式保持纯输出。1.2.1 已增加本地版本查询和升级版本提示；在 1.2.0 的 npx 安装入口基础上，增加 `status` 本地版本和完整性查询、升级前后版本提示及简短安装提示词。保留无项目安装、幂等检查、校验、备份、失败回滚及配置保护。合并规则与工具逻辑沿用 1.1.1，安装器测试不代表真实场景合并或 Unity 业务回归。
 
 1.2.0 已在 macOS 验证 15 项安装与分发测试，以及 npm 打包后的实际 npx 安装和重复执行。1.2.1 新增本地版本只读检查、损坏文件识别和升级提示测试。完整工具测试中的 15 项历史批处理进程测试依赖 Windows/Linux 进程接口，在 macOS 不适用；历史 Unity 批处理启动器仍只支持 Windows。当前推荐的已打开 Unity Editor + MCP 合并流程保持原样。
 
@@ -100,7 +112,7 @@ python -B -X utf8 "$project/Tools/SkillSources/gm-scene-handoff/distribution/bui
 公开包的构建入口为同目录下的 `build_public_package.py`：
 
 ```sh
-python -B -X utf8 "$project/Tools/SkillSources/gm-scene-handoff/distribution/build_public_package.py" --version 1.2.1 --repository taozhang159/gm-scene-handoff --output "项目外的新暂存目录"
+python -B -X utf8 "$project/Tools/SkillSources/gm-scene-handoff/distribution/build_public_package.py" --version 1.2.2 --repository taozhang159/gm-scene-handoff --output "项目外的新暂存目录"
 ```
 
 该命令只生成独立分发目录，不上传、不复制游戏工程。版本更新时先修改版本说明，运行适用的打包与安装测试，再生成新版本目录，将确认的分发内容发布到公开仓库 main。输出目录必须是新目录，不能直接覆盖现有发布或工作区。

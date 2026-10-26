@@ -44,21 +44,28 @@ function main(argv) {
   if (command === 'status' && (options.has('--workspace') || options.has('--codex-home'))) {
     throw new Error('status 只检查个人技能目录；自定义位置请使用 --user-home。');
   }
+  if (!json) console.error(`[GM Scene Handoff] 发布包 ${metadata.version} 已就绪，正在检查 Python 3.11+…`);
   const probe = 'import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)';
   const candidates = options.has('--python') ? [[options.get('--python')]] :
     (process.platform === 'win32' ? [['py', '-3'], ['python'], ['python3']] : [['python3'], ['python']]);
   const python = candidates.find(([command, ...prefix]) =>
     spawnSync(command, [...prefix, '-B', '-c', probe], { encoding: 'utf8', timeout: 15000 }).status === 0);
   if (!python) throw new Error('未找到 Python 3.11+。请先安装，或使用 --python 指定程序路径。');
+  if (!json) console.error(`[GM Scene Handoff] Python 已就绪，开始${command === 'status' ? '查询状态' : '安装或更新'}…`);
   const script = path.join(__dirname, 'skill', 'scripts', 'install.py');
   const installArgs = [...python.slice(1), '-B', '-X', 'utf8', script];
+  if (!json) installArgs.push('--progress');
   if (command === 'status') installArgs.push('--status');
   if (options.has('--workspace')) installArgs.push('--workspace', path.resolve(options.get('--workspace')));
   else installArgs.push('--global');
   for (const flag of ['--user-home', '--codex-home']) {
     if (options.has(flag)) installArgs.push(flag, path.resolve(options.get(flag)));
   }
-  const result = spawnSync(python[0], installArgs, { encoding: 'utf8', maxBuffer: 1024 * 1024 });
+  // 人类可读进度直接继承 stderr，避免等到子进程结束才统一显示；JSON 模式保持纯输出。
+  const result = spawnSync(python[0], installArgs, {
+    encoding: 'utf8', maxBuffer: 1024 * 1024,
+    stdio: ['ignore', 'pipe', json ? 'pipe' : 'inherit']
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error((result.stderr || result.stdout || '安装进程未正常结束').trim());
   const receipt = JSON.parse(result.stdout);

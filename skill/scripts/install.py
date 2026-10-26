@@ -11,6 +11,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import sys
 import tempfile
 import tomllib
 import uuid
@@ -118,24 +119,34 @@ def atomic_write(path, content):
         temporary.unlink(missing_ok=True)
 
 
-def installed_status(package, user_home=None):
+def progress_message(enabled, message):
+    if enabled:
+        print("[GM Scene Handoff] " + message, file=sys.stderr, flush=True)
+
+
+def installed_status(package, user_home=None, *, progress=False):
     """只读检查本机安装目录，明确区分本地版本与本次取得的分发版本。"""
+    progress_message(progress, "[1/3] 校验下载的发布包…")
     available = verify_package(package)
     personal = Path(user_home or Path.home()).expanduser().resolve()
     target = personal / ".agents/skills" / NAME
     result = {"name": NAME, "status": "not_installed", "version": None,
               "available_version": available["version"], "installed": str(target),
               "files_verified": 0}
+    progress_message(progress, "[2/3] 检查本地安装目录与文件完整性…")
     if target.exists():
         current = verify_package(target)
         result.update(status="installed", version=current["version"],
                       files_verified=len(current["files"]))
+    progress_message(progress, "[3/3] 查询完成。")
     return result
 
 
-def install(package, workspace=None, user_home=None, codex_home=None):
+def install(package, workspace=None, user_home=None, codex_home=None, *, progress=False):
     package = Path(package).resolve()
+    progress_message(progress, "[1/5] 校验下载的发布包…")
     manifest = verify_package(package)
+    progress_message(progress, "[2/5] 检查安装位置、项目及现有配置…")
     info = resolve_project(workspace) if workspace is not None else None
     repo = Path(info["repository"]) if info else None
     project = Path(info["project"]) if info else None
@@ -174,6 +185,7 @@ def install(package, workspace=None, user_home=None, codex_home=None):
         except (ValueError, OSError):
             pass  # 损坏或有本地修改的旧目录仍完整备份后再修复。
     if current_manifest == manifest and updated == original:
+        progress_message(progress, "检查完成，版本、文件与配置均一致，无需更新。")
         return {"name": NAME, "version": manifest["version"], "status": "unchanged",
                 "previous_version": manifest["version"],
                 "installed": str(target), "config": str(config), "backup": None,
@@ -186,6 +198,7 @@ def install(package, workspace=None, user_home=None, codex_home=None):
     if not backup_root.is_relative_to(agents) or (repo is not None and backup_root.is_relative_to(repo)):
         raise ValueError("备份目录必须位于项目外的个人 .agents 目录")
     backup = backup_root / (NAME + "-" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8])
+    progress_message(progress, "[3/5] 准备备份并复制新版本…")
     backup.mkdir(parents=True)
     if original is not None:
         (backup / "config.toml").write_bytes(original)
@@ -198,11 +211,13 @@ def install(package, workspace=None, user_home=None, codex_home=None):
             destination = staged / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(package / name, destination)
+        progress_message(progress, "[4/5] 校验复制后的文件…")
         verify_package(staged)
         current = config.read_bytes() if config.exists() else None
         if current != original:
             raise ValueError("Codex 配置在安装期间变化，已取消，请重试")
         try:
+            progress_message(progress, "[5/5] 保存旧版备份并更新个人技能及配置…")
             if target.exists():
                 target.rename(backup / NAME)
                 moved = True
@@ -223,6 +238,7 @@ def install(package, workspace=None, user_home=None, codex_home=None):
                "restart_codex": True,
                "unity_mcp": "安装未验证 Unity MCP；合并前须核对活动 Editor 项目与依赖"}
     (backup / "receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    progress_message(progress, "安装处理完成。")
     return receipt
 
 
@@ -233,13 +249,14 @@ if __name__ == "__main__":
     scope.add_argument("--global", dest="global_install", action="store_true",
                        help="仅安装到个人目录，可在没有 GMGame 仓库时使用")
     parser.add_argument("--status", action="store_true", help="只读查询本机安装版本与文件完整性")
+    parser.add_argument("--progress", action="store_true", help="向 stderr 实时输出执行阶段")
     parser.add_argument("--user-home", help="仅在非默认用户目录或安装验证时指定")
     parser.add_argument("--codex-home", help="默认使用 CODEX_HOME 或用户 .codex 目录")
     args = parser.parse_args()
     try:
         package = Path(__file__).resolve().parents[1]
-        result = (installed_status(package, args.user_home) if args.status else
-                  install(package, args.workspace, args.user_home, args.codex_home))
+        result = (installed_status(package, args.user_home, progress=args.progress) if args.status else
+                  install(package, args.workspace, args.user_home, args.codex_home, progress=args.progress))
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, OSError) as error:
         parser.exit(1, str(error) + "\n")

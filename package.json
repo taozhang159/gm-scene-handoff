@@ -1,6 +1,6 @@
 {
   "name": "gm-scene-handoff",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Install and update the GMGame scene handoff skill for Codex",
   "bin": {
     "gm-scene-handoff": "cli.cjs"
