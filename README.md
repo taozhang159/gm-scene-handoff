@@ -1,6 +1,6 @@
 # GM Scene Handoff
 
-GMGame 场景合并技能的公开分发包。版本：**1.2.2**。
+GMGame 场景合并技能的公开分发包。版本：**1.2.3**。
 
 ## 安装与更新
 
@@ -26,13 +26,19 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install --wor
 
 程序启动后实时显示 Python 检查及校验、备份、安装阶段。`--json` 保持纯 JSON 输出。
 
-npx 需要先获取发布包，技能不能在下载完成前输出进度。Windows PowerShell 如需立即看到等待提示和下载日志，可执行：
+npx 需要先获取发布包，技能不能在下载完成前输出进度。Windows PowerShell 推荐使用以下命令，按下回车即显示等待提示，随后输出下载日志。安装或更新：
 
 ```powershell
-Write-Host '正在从 GitHub 获取技能，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main install
+Write-Host '正在获取最新技能并准备安装或更新，首次运行可能需要一些时间，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main install
 ```
 
-查询时把最后的 `install` 改成 `status`。不显示无法测量的百分比。
+查询状态（不会安装或更新本地技能）：
+
+```powershell
+Write-Host '正在获取发布信息并准备查询本地技能，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main status
+```
+
+原来的纯 npx 命令仍可使用，但下载开始时可能暂时无输出。不显示无法测量的百分比。
 
 ## 查询本地版本
 
@@ -40,9 +46,9 @@ Write-Host '正在从 GitHub 获取技能，请稍候…'; npx --yes --prefer-on
 npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
 ```
 
-`status` 只读查询个人目录中的实际安装版本、路径和文件完整性，同时显示本次下载包版本；未安装时明确提示未安装，不会偷偷安装。`--version` 仅显示下载包版本，不用于判断本地版本。
+`status` 只读查询个人目录中的实际安装版本、路径和文件完整性，同时显示本次获取的发布版本；未安装时明确提示未安装，不会偷偷安装。`--version` 仅显示下载包版本，不用于判断本地版本。
 
-安装后会输出 `安装完成：GM Scene Handoff 1.2.2`；升级时输出旧版本与新版本，例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.2`。已经完整安装相同版本时提示版本无需更新。
+安装后会输出 `安装完成：GM Scene Handoff 1.2.3`；升级时输出旧版本与新版本，例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.3`。已经完整安装相同版本时提示版本无需更新。
 
 ## 给 Codex 的简短提示词
 

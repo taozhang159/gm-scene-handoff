@@ -44,7 +44,7 @@ function main(argv) {
   if (command === 'status' && (options.has('--workspace') || options.has('--codex-home'))) {
     throw new Error('status 只检查个人技能目录；自定义位置请使用 --user-home。');
   }
-  if (!json) console.error(`[GM Scene Handoff] 发布包 ${metadata.version} 已就绪，正在检查 Python 3.11+…`);
+  if (!json) console.error(`[GM Scene Handoff] 正在${command === 'status' ? '查询技能状态' : '安装或更新技能'}，请稍候…（发布版本 ${metadata.version}，正在检查 Python 3.11+）`);
   const probe = 'import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)';
   const candidates = options.has('--python') ? [[options.get('--python')]] :
     (process.platform === 'win32' ? [['py', '-3'], ['python'], ['python3']] : [['python3'], ['python']]);
@@ -72,10 +72,21 @@ function main(argv) {
   if (json) console.log(JSON.stringify(receipt, null, 2));
   else if (command === 'status') {
     console.log(receipt.status === 'not_installed' ? '本地尚未安装 GM Scene Handoff。' :
-      `本地已安装版本：GM Scene Handoff ${receipt.version}`);
+      `本地技能版本：GM Scene Handoff ${receipt.version}`);
     console.log(`位置：${receipt.installed}`);
-    console.log(`本次下载包版本：${receipt.available_version}`);
-    if (receipt.status === 'installed') console.log(`文件完整性：${receipt.files_verified} 个文件校验通过。`);
+    console.log(`本次获取的发布版本：${receipt.available_version}`);
+    if (receipt.status === 'installed') {
+      console.log(`文件完整性：${receipt.files_verified} 个文件校验通过。`);
+      const local = receipt.version.split('.').map(Number);
+      const available = receipt.available_version.split('.').map(Number);
+      const different = available.findIndex((part, index) => part !== local[index]);
+      if (different >= 0 && available[different] > local[different]) {
+        console.log('发现可更新版本，请执行 install 更新。');
+      } else if (receipt.version === receipt.available_version) {
+        console.log('本地技能与本次获取的发布版本一致，无需更新。');
+      } else console.log('本地版本与本次获取的发布版本不同，请核对发布来源。');
+    } else console.log('执行 install 可安装技能。');
+    console.log('status 仅查询，本次未安装或更新本地技能。');
   }
   else {
     if (receipt.status === 'unchanged') console.log(`已经是完整的当前发布版本：GM Scene Handoff ${receipt.version}`);

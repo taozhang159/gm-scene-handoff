@@ -30,7 +30,7 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install --wor
 npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
 ```
 
-`status` 只读查询实际安装版本、目录和文件完整性，并显示本次下载包版本。没有安装时明确提示未安装，不会写入文件或配置。`--version` 仅显示下载的分发包版本，不能代替 `status` 判断本地安装情况。
+`status` 只读查询实际安装版本、目录和文件完整性，并显示本次获取的发布版本。没有安装时明确提示未安装，不会写入文件或配置。`--version` 仅显示下载的分发包版本，不能代替 `status` 判断本地安装情况。
 
 首次安装提示 `安装完成：GM Scene Handoff 1.2.1`；升级提示例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.1`，并显示安装位置和备份位置。版本相同且文件完整时提示已经是当前发布版本。
 
@@ -42,13 +42,19 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
 
 1.2.2 起，程序启动后实时显示 Python 检查、文件校验、备份和安装阶段；`status` 显示查询阶段。`--json` 不输出进度，便于程序读取。
 
-最前面的 GitHub 下载由 npx 执行，技能尚未启动，无法在这段时间输出自身进度。Windows PowerShell 可使用带即时提示和下载日志的一行命令：
+最前面的 GitHub 下载由 npx 执行，技能尚未启动，无法在这段时间输出自身进度。Windows PowerShell 推荐使用以下带即时提示和下载日志的一行命令。安装或更新：
 
 ```powershell
-Write-Host '正在从 GitHub 获取技能，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main install
+Write-Host '正在获取最新技能并准备安装或更新，首次运行可能需要一些时间，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main install
 ```
 
-查询时将最后的 `install` 改成 `status`。这些是实际阶段和网络日志，不显示虚构的百分比。
+查询状态（不会安装或更新本地技能）：
+
+```powershell
+Write-Host '正在获取发布信息并准备查询本地技能，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main status
+```
+
+两条命令均先显示提示再启动 npx；原来的纯 npx 命令仍有效，但最初下载可能暂时无输出。1.2.3 起状态结果区分“本地技能版本”和“本次获取的发布版本”，有较新版本时提示执行 install。
 
 ## 附件离线安装
 
