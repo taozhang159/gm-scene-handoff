@@ -118,6 +118,21 @@ def atomic_write(path, content):
         temporary.unlink(missing_ok=True)
 
 
+def installed_status(package, user_home=None):
+    """只读检查本机安装目录，明确区分本地版本与本次取得的分发版本。"""
+    available = verify_package(package)
+    personal = Path(user_home or Path.home()).expanduser().resolve()
+    target = personal / ".agents/skills" / NAME
+    result = {"name": NAME, "status": "not_installed", "version": None,
+              "available_version": available["version"], "installed": str(target),
+              "files_verified": 0}
+    if target.exists():
+        current = verify_package(target)
+        result.update(status="installed", version=current["version"],
+                      files_verified=len(current["files"]))
+    return result
+
+
 def install(package, workspace=None, user_home=None, codex_home=None):
     package = Path(package).resolve()
     manifest = verify_package(package)
@@ -160,6 +175,7 @@ def install(package, workspace=None, user_home=None, codex_home=None):
             pass  # 损坏或有本地修改的旧目录仍完整备份后再修复。
     if current_manifest == manifest and updated == original:
         return {"name": NAME, "version": manifest["version"], "status": "unchanged",
+                "previous_version": manifest["version"],
                 "installed": str(target), "config": str(config), "backup": None,
                 "project": info, "disabled_skills": [str(p) for p in flags if not flags[p]],
                 "restart_codex": False}
@@ -201,6 +217,7 @@ def install(package, workspace=None, user_home=None, codex_home=None):
                 (backup / NAME).rename(target)
             raise
     receipt = {"name": NAME, "version": manifest["version"], "status": "installed", "installed": str(target),
+               "previous_version": current_manifest["version"] if current_manifest else None,
                "config": str(config), "backup": str(backup), "project": info,
                "disabled_skills": [str(p) for p in flags if not flags[p]],
                "restart_codex": True,
@@ -215,11 +232,14 @@ if __name__ == "__main__":
     scope.add_argument("--workspace", help="安装并停用指定 GMGame 仓库内的同名旧技能")
     scope.add_argument("--global", dest="global_install", action="store_true",
                        help="仅安装到个人目录，可在没有 GMGame 仓库时使用")
+    parser.add_argument("--status", action="store_true", help="只读查询本机安装版本与文件完整性")
     parser.add_argument("--user-home", help="仅在非默认用户目录或安装验证时指定")
     parser.add_argument("--codex-home", help="默认使用 CODEX_HOME 或用户 .codex 目录")
     args = parser.parse_args()
     try:
-        print(json.dumps(install(Path(__file__).resolve().parents[1], args.workspace,
-                                 args.user_home, args.codex_home), ensure_ascii=False, indent=2))
+        package = Path(__file__).resolve().parents[1]
+        result = (installed_status(package, args.user_home) if args.status else
+                  install(package, args.workspace, args.user_home, args.codex_home))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, OSError) as error:
         parser.exit(1, str(error) + "\n")

@@ -1,6 +1,6 @@
 # GM Scene Handoff
 
-GMGame 场景合并技能的公开分发包。版本：**1.2.0**。
+GMGame 场景合并技能的公开分发包。版本：**1.2.1**。
 
 ## 安装与更新
 
@@ -12,7 +12,7 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install
 
 首次安装和以后升级都运行这一条命令。发布分支 main 只放完整发布包；安装器校验文件、备份旧版、更新个人技能并保留其他配置。已完整安装相同版本时不会重复写盘或备份。
 
-安装位置为 `~/.agents/skills/gm-scene-handoff/`。未显示新版时重启 Codex。
+安装位置为当前用户的 `~/.agents/skills/gm-scene-handoff/`（Windows 通常为 `%USERPROFILE%\.agents\skills\gm-scene-handoff`）。此目录已有技能时备份并更新，没有则创建并安装。自定义过用户目录的安装需沿用 `--user-home`，不会全盘查找其他副本。未显示新版时重启 Codex。
 
 如果 GMGame 仓库存在同名旧技能，在该仓库中运行：
 
@@ -20,7 +20,21 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install
 npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install --workspace .
 ```
 
-可通过 `--python` 指定 Python，通过 `--user-home` / `--codex-home` 指定安装和配置目录。`--help` 显示全部选项，`--version` 显示下载包版本，`--json` 输出安装结果。
+可通过 `--python` 指定 Python，通过 `--user-home` / `--codex-home` 指定安装和配置目录。`--help` 显示全部选项，`--json` 输出结构化结果。
+
+## 查询本地版本
+
+```sh
+npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
+```
+
+`status` 只读查询个人目录中的实际安装版本、路径和文件完整性，同时显示本次下载包版本；未安装时明确提示未安装，不会偷偷安装。`--version` 仅显示下载包版本，不用于判断本地版本。
+
+安装后会输出 `安装完成：GM Scene Handoff 1.2.1`；升级时输出旧版本与新版本，例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.1`。已经完整安装相同版本时提示版本无需更新。
+
+## 给 Codex 的简短提示词
+
+> 请安装或更新 https://github.com/taozhang159/gm-scene-handoff 中的 gm-scene-handoff，使用仓库的一行命令；完成后运行 status，告诉我本地版本和安装路径。只安装更新，不执行场景合并。
 
 ## 使用范围
 

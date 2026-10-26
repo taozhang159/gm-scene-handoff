@@ -20,7 +20,23 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install
 npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install --workspace .
 ```
 
-安装器会自动寻找 Python 3.11+，也可用 `--python` 指定。`install` 和 `update` 等效；`--version` 查看下载包版本，`--help` 查看参数，`--json` 输出安装结果。文件与配置均已完整一致时，不重复创建备份。未显示新版时重启 Codex。
+安装器会自动寻找 Python 3.11+，也可用 `--python` 指定。`install` 和 `update` 等效；`--help` 查看参数，`--json` 输出安装结果。文件与配置均已完整一致时，不重复创建备份。未显示新版时重启 Codex。
+
+标准安装位置为当前用户的 `~/.agents/skills/gm-scene-handoff/`，Windows 通常为 `%USERPROFILE%\.agents\skills\gm-scene-handoff`。该位置已有技能时先备份再更新，没有则创建并安装。若此前使用 `--user-home` 自定义了用户目录，更新和查询时需传入相同参数；安装器不会全盘搜索任意位置的副本。
+
+## 确认本地版本
+
+```sh
+npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
+```
+
+`status` 只读查询实际安装版本、目录和文件完整性，并显示本次下载包版本。没有安装时明确提示未安装，不会写入文件或配置。`--version` 仅显示下载的分发包版本，不能代替 `status` 判断本地安装情况。
+
+首次安装提示 `安装完成：GM Scene Handoff 1.2.1`；升级提示例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.1`，并显示安装位置和备份位置。版本相同且文件完整时提示已经是当前发布版本。
+
+给同事的简短提示词：
+
+> 请安装或更新 https://github.com/taozhang159/gm-scene-handoff 中的 gm-scene-handoff，使用仓库的一行命令；完成后运行 status，告诉我本地版本和安装路径。只安装更新，不执行场景合并。
 
 ## 附件离线安装
 
@@ -69,9 +85,9 @@ python -B -X utf8 "$unpacked/gm-scene-handoff/scripts/install.py" --global
 
 ## 版本、维护与回退
 
-**1.2.0**：增加 npx 安装入口、无项目时的个人安装和重复安装的幂等检查；保留原有校验、备份、失败回滚及配置保护。合并规则与工具逻辑沿用 1.1.1，并重新收录当前项目指南快照。安装器测试不代表真实场景合并或 Unity 业务回归。
+**1.2.1**：在 1.2.0 的 npx 安装入口基础上，增加 `status` 本地版本和完整性查询、升级前后版本提示及简短安装提示词。保留无项目安装、幂等检查、校验、备份、失败回滚及配置保护。合并规则与工具逻辑沿用 1.1.1，安装器测试不代表真实场景合并或 Unity 业务回归。
 
-macOS 已验证 15 项安装与分发测试，以及 npm 打包后的实际 npx 安装和重复执行。完整工具测试中的 15 项历史批处理进程测试依赖 Windows/Linux 进程接口，在 macOS 不适用；历史 Unity 批处理启动器仍只支持 Windows。当前推荐的已打开 Unity Editor + MCP 合并流程保持原样。
+1.2.0 已在 macOS 验证 15 项安装与分发测试，以及 npm 打包后的实际 npx 安装和重复执行。1.2.1 新增本地版本只读检查、损坏文件识别和升级提示测试。完整工具测试中的 15 项历史批处理进程测试依赖 Windows/Linux 进程接口，在 macOS 不适用；历史 Unity 批处理启动器仍只支持 Windows。当前推荐的已打开 Unity Editor + MCP 合并流程保持原样。
 
 包版本见 `package.json` 的 `version`；发布者同时保留完整文件哈希与源提交信息。源码继续维护在项目 `Tools/SkillSources/gm-scene-handoff/` 和 `Docs/Workflows/SceneHandoff/`；包内参考文档是发布时生成的快照，不单独手改。
 
@@ -84,7 +100,7 @@ python -B -X utf8 "$project/Tools/SkillSources/gm-scene-handoff/distribution/bui
 公开包的构建入口为同目录下的 `build_public_package.py`：
 
 ```sh
-python -B -X utf8 "$project/Tools/SkillSources/gm-scene-handoff/distribution/build_public_package.py" --version 1.2.0 --repository taozhang159/gm-scene-handoff --output "项目外的新暂存目录"
+python -B -X utf8 "$project/Tools/SkillSources/gm-scene-handoff/distribution/build_public_package.py" --version 1.2.1 --repository taozhang159/gm-scene-handoff --output "项目外的新暂存目录"
 ```
 
 该命令只生成独立分发目录，不上传、不复制游戏工程。版本更新时先修改版本说明，运行适用的打包与安装测试，再生成新版本目录，将确认的分发内容发布到公开仓库 main。输出目录必须是新目录，不能直接覆盖现有发布或工作区。
