@@ -1,6 +1,6 @@
 # GM Scene Handoff
 
-GMGame 场景合并技能的公开分发包。版本：**1.2.3**。
+GMGame 场景合并技能的公开分发包。版本：**1.2.4**。
 
 ## 安装与更新
 
@@ -48,7 +48,7 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
 
 `status` 只读查询个人目录中的实际安装版本、路径和文件完整性，同时显示本次获取的发布版本；未安装时明确提示未安装，不会偷偷安装。`--version` 仅显示下载包版本，不用于判断本地版本。
 
-安装后会输出 `安装完成：GM Scene Handoff 1.2.3`；升级时输出旧版本与新版本，例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.3`。已经完整安装相同版本时提示版本无需更新。
+安装后会输出 `安装完成：GM Scene Handoff 1.2.4`；升级时输出旧版本与新版本，例如 `更新完成：GM Scene Handoff 1.2.0 → 1.2.4`。已经完整安装相同版本时提示版本无需更新。
 
 ## 给 Codex 的简短提示词
 

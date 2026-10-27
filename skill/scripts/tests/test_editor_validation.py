@@ -167,6 +167,92 @@ class EditorTests(unittest.TestCase):
             summary.update(passed=1, failed=int(state == "Failed"), skipped=int(state == "Skipped"))
             self.assertEqual(editor.job_result(job, {"job_id": "job"}, self.ticket)["status"], "failed")
 
+    def test_labeled_failure_is_archived_and_blocks_unchanged_retry(self):
+        self.start()
+        job = self.job()
+        job["result"]["results"][0]["state"] = "Failed:Error"
+        job["result"]["summary"].update(passed=1, failed=1, resultState="Failed")
+        result = self.finish(job)
+        self.assertEqual(result["status"], "failed")
+        saved = core.read_json(self.evidence / result["result_file"])
+        self.assertEqual(saved["failed"], 1)
+        self.assertEqual(saved["tests"][0]["result"], "Failed:Error")
+        with self.assertRaisesRegex(core.HandoffError, "已有失败"):
+            editor.begin(self.args)
+
+    def test_labeled_failure_does_not_hide_wrong_summary(self):
+        self.start()
+        job = self.job()
+        job["result"]["results"][0]["state"] = "Failed:Error"
+        with self.assertRaisesRegex(core.HandoffError, "计数"):
+            editor.job_result(job, {"job_id": "job"}, self.ticket)
+
+    def summary_args(self):
+        core.write_json(self.evidence / "cleanup.json", {"task_id": "test", "status": "complete",
+                        "user_data_verified": True, "details": "模拟恢复"})
+        core.write_json(self.evidence / "files.json", {"files": ["Assets/data.txt"]})
+        return argparse.Namespace(project=self.project, evidence=self.evidence, plan=self.args.plan,
+                                  cleanup_record=self.evidence / "cleanup.json", files=self.evidence / "files.json",
+                                  output=self.evidence / "summary", require_complete=True)
+
+    def test_summary_guard_leaves_no_output_and_reuses_after_exact_restore(self):
+        self.start()
+        self.finish()
+        args = self.summary_args()
+        p = self.project / "Assets/data.txt"
+        original = p.read_bytes()
+        p.write_bytes(b"different")
+        with self.assertRaisesRegex(core.HandoffError, "Assets/data.txt"):
+            handoff.do_summarize(args)
+        self.assertFalse(args.output.exists())
+        p.write_bytes(original)
+        self.assertEqual(handoff.do_summarize(args)["status"], "validation_complete")
+
+    def test_exact_bytes_reuse_after_index_refresh_but_not_newlines(self):
+        core.git(self.root, "config", "core.autocrlf", "true")
+        p = self.project / "Assets/data.txt"
+        p.write_bytes(b"initial\r\n")
+        self.commit("text fixture")
+        p.write_bytes(b"initial\n")
+        self.start()
+        self.finish()
+        args = self.summary_args()
+        core.git(self.root, "add", "--", "原项目/Assets/data.txt")
+        self.assertEqual(handoff.do_summarize(args)["status"], "validation_complete")
+        p.write_bytes(b"initial\r\n")
+        args.output = self.evidence / "summary-newline"
+        with self.assertRaisesRegex(core.HandoffError, "未创建输出"):
+            handoff.do_summarize(args)
+        self.assertFalse(args.output.exists())
+
+    def test_summary_does_not_hide_new_failure_with_old_equivalent_pass(self):
+        core.git(self.root, "config", "core.autocrlf", "true")
+        p = self.project / "Assets/data.txt"
+        p.write_bytes(b"initial\r\n")
+        self.commit("text fixture")
+        p.write_bytes(b"initial\n")
+        self.start()
+        self.finish()
+        core.git(self.root, "add", "--", "原项目/Assets/data.txt")
+        self.start()
+        job = self.job()
+        job["result"]["results"][0]["state"] = "Failed:Error"
+        job["result"]["summary"].update(passed=1, failed=1, resultState="Failed")
+        self.finish(job)
+        args = self.summary_args()
+        with self.assertRaisesRegex(core.HandoffError, "未创建输出"):
+            handoff.do_summarize(args)
+        self.assertFalse(args.output.exists())
+
+    def test_summary_guard_rejects_target_branch_change(self):
+        self.start()
+        self.finish()
+        core.git(self.root, "switch", "-c", "different-target")
+        args = self.summary_args()
+        with self.assertRaisesRegex(core.HandoffError, "target_matches"):
+            handoff.do_summarize(args)
+        self.assertFalse(args.output.exists())
+
     def test_unchanged_failure_requires_diagnosis_or_recovery(self):
         self.start()
         job = self.job()

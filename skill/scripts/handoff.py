@@ -43,9 +43,22 @@ def result_for(project, evidence, record):
     return data
 
 
-def matching_run(records, project, evidence, check, plan_hash, inputs):
+def matching_run(records, project, evidence, check, plan_hash, inputs, *, current=None):
     candidates = [r for r in records if r["check"] == check and r["plan_hash"] == plan_hash
-                  and r["input_snapshot_id"] == inputs]
+                  and (current is None or (r["target_commit"] == current["commit"]
+                       and r.get("target_branch", current["branch"]) == current["branch"]))]
+    matched = []
+    for record in candidates:
+        if record["input_snapshot_id"] == inputs:
+            matched.append(record)
+        elif current is not None and record.get("inputs_sha256"):
+            # 暂存可把 SHA256 表示变成 git:blob；仅逐字节相同时复用，不放宽换行检查。
+            path = inside(evidence, record["record_file"]).parent / "inputs.json"
+            if file_hash(path) != record["inputs_sha256"]:
+                raise HandoffError("运行输入快照已损坏：" + record["run_id"])
+            if snapshot_matches(read_json(path), current, project):
+                matched.append(record)
+    candidates = matched
     if not candidates:
         return None
     latest = candidates[-1]
@@ -315,7 +328,8 @@ def do_summarize(args):
     records = run_records(evidence)
     effective, missing, tests = [], [], {}
     for check in plan["checks"]:
-        record = matching_run(records, args.project, evidence, check, plan_hash, current["input_snapshot_id"])
+        record = matching_run(records, args.project, evidence, check, plan_hash, current["input_snapshot_id"],
+                              current=current)
         if not record:
             record = restored_run(records, args.project, evidence, check, plan_hash,
                                   current["input_snapshot_id"], cleanup)
@@ -327,6 +341,25 @@ def do_summarize(args):
         for test in result_for(args.project, evidence, record)["tests"]:
             tests[check["mode"] + ":" + test["name"]] = {**test, "run": record["run_id"],
                                                          "input_snapshot_id": current["input_snapshot_id"]}
+    if missing and getattr(args, "require_complete", False):
+        # 在冻结报告、扫描交付清单之前停止；同一输出目录可在解决原因后直接重试。
+        diagnostics = []
+        for check_id in missing:
+            runs = [r for r in records if r["check"]["id"] == check_id and r["plan_hash"] == plan_hash]
+            detail = {"check": check_id, "reason": "no_matching_run"}
+            if runs:
+                last = runs[-1]
+                detail.update(run_id=last["run_id"], status=last["status"],
+                              target_matches=last["target_commit"] == current["commit"]
+                              and last.get("target_branch", current["branch"]) == current["branch"])
+                previous = read_json(inside(evidence, last["record_file"]).parent / "inputs.json")
+                changed = sorted(n for n in set(previous["files"]) | set(current["files"])
+                                 if previous["files"].get(n) != current["files"].get(n))
+                detail.update(input_difference_count=len(changed), input_difference_paths=changed[:20],
+                              tools_changed=previous["tools"] != current["tools"])
+            diagnostics.append(detail)
+        raise HandoffError("最终汇总尚未就绪，未创建输出目录；先定位失败、目标或输入差异，再决定恢复或必要重测："
+                           + json.dumps(diagnostics, ensure_ascii=False))
     status = "validation_complete" if not missing else "validation_incomplete"
     selected = manifest(args.project, read_json(args.files))
     project = Path(args.project).resolve()
@@ -373,6 +406,14 @@ def do_summarize(args):
     for row in summaries:
         lines.append(f"| {row['run_id']} | {row['status']} | {row['passed']}/{row['total']} | "
                      f"{row['elapsed_ms'] / 1000:.3f} | {row['exit_state']} |")
+    lines += ["", "| Editor 运行 | 调度等待（秒） | 作业（秒） | 收口（秒） | 其中快照（秒） |",
+              "|---|---:|---:|---:|---:|"]
+    for row in summaries:
+        timing = row.get("timing")
+        if timing:
+            values = [f"{timing[key] / 1000:.3f}" for key in
+                      ("dispatch_delay_ms", "job_elapsed_ms", "collection_delay_ms", "after_snapshot_ms")]
+            lines.append("| " + row["run_id"] + " | " + " | ".join(values) + " |")
     lines += ["", "耗时包含快照、预检和进程等待；XML duration 单列于 JSON，不能把并行或嵌套阶段简单相加。",
               "退出异常保留于表中。该报告不声明已提交、已推送、人工验收通过或全部场景无回归。", "",
               *["- " + text for text in payload["limitations"]], ""]
@@ -441,6 +482,7 @@ def main(argv=None):
             command_parser.add_argument("--test-timeout", type=positive, default=1800)
             command_parser.add_argument("--exit-grace", type=positive, default=45)
     report = commands.add_parser("summarize")
+    report.add_argument("--require-complete", action="store_true", help="无完整有效结果时先返回差异，不创建汇总目录")
     for field in ("project", "evidence", "plan", "cleanup-record", "files", "output"):
         report.add_argument("--" + field, required=True)
     verify = commands.add_parser("verify")

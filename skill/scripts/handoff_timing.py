@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -17,10 +18,16 @@ EVENTS = ("started", "prepared", "git_complete", "scene_applied", "merged", "imp
 
 
 def records(directory, task_id):
-    rows = [read_json(p) for p in sorted(Path(directory).glob("*.json"))]
+    # 只读取本工具的连续编号记录，原始作业 JSON 不参与计时。
+    paths = sorted(p for p in Path(directory).glob("*.json") if re.fullmatch(r"[0-9]{3,}\.json", p.name))
+    if [p.name for p in paths] != [f"{i:03d}.json" for i in range(len(paths))]:
+        raise HandoffError("计时记录编号缺失或不连续；保留历史并检查")
+    rows = [read_json(p) for p in paths]
     previous = None
     seen = set()
     for row in rows:
+        if not isinstance(row, dict) or not all(k in row for k in ("at", "task_id", "event")):
+            raise HandoffError("编号计时记录格式损坏；不能当作无关 JSON 忽略")
         stamp = datetime.fromisoformat(row["at"])
         if (row["task_id"] != task_id or row["event"] not in EVENTS
                 or row["event"] in seen or stamp.utcoffset() is None

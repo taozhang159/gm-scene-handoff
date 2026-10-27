@@ -126,7 +126,11 @@ def job_result(job, dispatch, ticket):
     expected = check["expected_tests"]
     if len(names) != len(set(names)) or set(names) != set(expected):
         raise HandoffError("实际用例与运行前确定的完整用例清单不符（缺失、重复或额外用例）")
-    counts = Counter(t.get("state") for t in tests)
+    # NUnit 会给失败附加 Error/Exception 标签；只归类，原始状态仍完整保存。
+    states = [t.get("state") for t in tests]
+    if any(not isinstance(s, str) or not s for s in states):
+        raise HandoffError("MCP 用例状态缺失或无效")
+    counts = Counter("Failed" if s.startswith("Failed:") else s for s in states)
     summary = result.get("summary") or {}
     if (not tests or len(tests) < check.get("min_tests", 1)
             or summary.get("total") != len(tests)

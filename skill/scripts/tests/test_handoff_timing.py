@@ -58,6 +58,24 @@ class TimingTests(unittest.TestCase):
         with self.assertRaises(HandoffError):
             timing.report(self.root, "a")
 
+    def test_unrelated_json_does_not_break_resume_or_reset_clock(self):
+        timing.mark(self.root, "a", "started")
+        original = (self.root / "000.json").read_bytes()
+        (self.root / "play-result.json").write_text('{"result": "data"}')
+        (self.root / "session.json").write_text('not even json')
+        timing.mark(self.root, "a", "finished")
+        self.assertEqual((self.root / "000.json").read_bytes(), original)
+        self.assertEqual(len(timing.report(self.root, "a")["events"]), 2)
+
+    def test_numbered_corruption_and_gap_are_not_ignored(self):
+        timing.mark(self.root, "a", "started")
+        (self.root / "002.json").write_text('{}')
+        with self.assertRaisesRegex(HandoffError, "编号"):
+            timing.mark(self.root, "a", "finished")
+        (self.root / "002.json").rename(self.root / "001.json")
+        with self.assertRaisesRegex(HandoffError, "损坏"):
+            timing.report(self.root, "a")
+
     def test_detailed_milestones_keep_original_lifecycle(self):
         for event in ("started", "prepared", "git_complete", "scene_applied", "merged",
                       "import_ready", "validation_complete", "cleanup_complete", "report_complete", "finished"):

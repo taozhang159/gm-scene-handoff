@@ -9,7 +9,7 @@
 固定的测试调度顺序、恢复清单及双根交付清单见 [执行辅助工具与续跑](execution-tools.md)。begin/finish 的输入与会话校验保留；无需为减少轮次改用不完整测试结果或跳过快照。
 
 1. 核对当前 MCP 的项目路径、实例 ID、进程会话身份以及实际分支/输入。停止播放并保存后检查编译、导入、未保存场景；写入和重载按 [合并流程](merge-workflow.md)。不关闭、重启或另开 Unity。
-2. 按实际变化及共享依赖确定检查项、理由、完整用例清单和能力需求。先从测试发现接口/版本化清单取得预期完整用例名，不从本轮执行结果反推 expected_tests。参数化测试包括每个具体用例。不以数量下限代替覆盖检查。
+2. 按实际变化及共享依赖确定检查项、理由、完整用例清单和能力需求。只修改第四章专用内容时，前三章仍做非目标场景保护，但不默认重跑全部玩法；修改存档、玩家、背包等共享系统时，补足受影响章节的必要回归。场景未变不能替代共享代码影响分析。先从测试发现接口/版本化清单取得预期完整用例名，不从本轮执行结果反推 expected_tests。参数化测试包括每个具体用例。不以数量下限代替覆盖检查。
 3. 需要 foreground_window、cursor_lock 或 camera_render 的检查，在准备会话/短预检时实测对应能力，不能仅凭配置声明 true。cursor_lock 指已证明该环境在正确播放阶段可取得光标锁，不要求 Edit Mode 常驻锁定光标。测试仍须验证实际业务输入门禁、保护帧及清理。
 4. 使用 editor-begin 固定输入和票据，再通过同一 MCP 运行检查，保存调度响应及 get_test_job 完整结果，editor-finish 接入并复用 summarize。工具不调用 MCP；Agent 负责真实采集和调度，不手写通过结果。标准接入负责校验结构与关联，不能证明人为伪造的 JSON 来源真实性。
 5. 条件不满足时先诊断，不用相同错误环境重试。MCP 不可用或原始结果格式不支持时明确未验证及原因，不降级为关闭 Editor/批处理。编译和人工检查可另列证据，不冒充 MCP 测试通过。
@@ -72,7 +72,7 @@ python -B -X utf8 $tool editor-begin --project $project --evidence $evidence --p
 python -B -X utf8 $tool editor-finish --project $project --evidence $evidence --run-id $runId --session $sessionAfter --dispatch $dispatchJson --result $jobJson
 ```
 
-适配器支持现有 Coplay 作业结构：job_id、status、mode、started_unix_ms、finished_unix_ms、result.summary 及 result.results（fullName/state/durationSeconds）。要求作业开始晚于 begin、与调度 ID 相同、结果模式匹配、实际用例集合与预期完全一致、总数和明细一致；零项、失败、跳过、缺失和旧结果不能报通过。前后快照或 HEAD/分支变化会使结果失效。保留同会话、作业及原始结果哈希，不用同名测试结果冒充。
+适配器支持现有 Coplay 作业结构：job_id、status、mode、started_unix_ms、finished_unix_ms、result.summary 及 result.results（fullName/state/durationSeconds）。要求作业开始晚于 begin、与调度 ID 相同、结果模式匹配、实际用例集合与预期完全一致、总数和明细一致；零项、失败、跳过、缺失和旧结果不能报通过。`Failed:Error` 等带标签的 Failed 状态计入失败数，原始标签保留，不再因这一已知格式取消正常失败记录；计数不一致仍拒绝。前后快照或 HEAD/分支变化会使结果失效。保留同会话、作业及原始结果哈希，不用同名测试结果冒充。
 
 中断或不兼容原始结果先保留原始响应和错误，再使用 editor-cancel --project ... --evidence ... --run-id ... --reason ... 记录 incomplete。cancel 不停止测试或 Editor；重开检查前须通过 MCP 确认旧作业已结束且恢复就绪。未收口票据阻止本证据目录的新检查。同一工程所有任务串行运行；工具短时 OS 锁不是跨 MCP 调用的长期 Editor 租约。
 
@@ -104,7 +104,7 @@ final 计划固定本轮必要覆盖。失败先保留原始结果，使用独�
 恢复本轮副作用后提供 cleanup.json（task_id、status=complete、user_data_verified=true、details），以及 delivery-files.json（项目相对 files/deleted 列表）。同一份结果生成报告和哈希清单，不再临时编写本轮校验脚本。集中收尾的顺序与文件冻结边界见 [最终收尾](execution-tools.md#最终收尾)。
 
 ```powershell
-python -B -X utf8 $tool summarize --project $project --evidence $evidence --plan "$evidence/validation-plan.json" --cleanup-record "$evidence/cleanup.json" --files "$evidence/delivery-files.json" --output "$evidence/summary"
+python -B -X utf8 $tool summarize --require-complete --project $project --evidence $evidence --plan "$evidence/validation-plan.json" --cleanup-record "$evidence/cleanup.json" --files "$evidence/delivery-files.json" --output "$evidence/summary"
 python -B -X utf8 $tool verify --project $project --manifest "$evidence/summary/result-file-hashes.json"
 ```
 
@@ -112,7 +112,7 @@ raw MCP 结果直接存入 validation/<run_id>，多个报告引用同份证据�
 
 ## 全过程计时
 
-使用个人安装目录中的 [handoff_timing.py](../scripts/handoff_timing.py)，记录在通过 git rev-parse --absolute-git-dir 取得的本项目 Git 管理目录下 handoff-timings/<task_id>，不写受测输入。实际发生后记录 started、prepared、merged、validation_complete、cleanup_complete、committed、push_verified、finished；没有推送省略 push_verified，原目录不记录旧隔离区 released。续跑沿用任务，不猜测回填时间。
+使用个人安装目录中的 [handoff_timing.py](../scripts/handoff_timing.py)，记录在通过 git rev-parse --absolute-git-dir 取得的本项目 Git 管理目录下 handoff-timings/<task_id>/timing/（旧任务沿用原目录），不写受测输入。实际发生后记录 started、prepared、merged、validation_complete、cleanup_complete、committed、push_verified、finished；没有推送省略 push_verified，原目录不记录旧隔离区 released。续跑沿用任务，不猜测回填时间。
 
 命令形式：`python -B -X utf8 $timer --directory $timingDir --task-id $taskId --event started`；完成时改为 finished，省略 --event 获取汇总。begin/finish 记录验证墙钟耗时、MCP 作业起止及用例 duration。阶段间隔含导入、调度、等待、分析或报告时明确口径，不能当成纯用例时间。需要细分的导入/编译时间取真实日志，不虚构精度。没有 finished 不声称端到端已完成。
 
@@ -121,3 +121,5 @@ raw MCP 结果直接存入 validation/<run_id>，多个报告引用同份证据�
 维护源码时运行：`python -B -X utf8 -m unittest discover -s "$skillRoot/scripts/tests" -v`
 
 测试只使用临时仓库和模拟进程/会话，不操作用户 Unity，也不代表真实工程迁移或性能已经验收。实际提速需在相同来源、目标及必要覆盖下计时，不承诺固定分钟数。
+
+已知真实场景夹具与模拟单例夹具互相污染时，在计划阶段按独立 PlayMode 生命周期分组；保存分组前后完整用例集合等价证据，不减少覆盖，不把未知失败预先归因于污染。无已知隔离需要时不增加测试组和快照轮数。
