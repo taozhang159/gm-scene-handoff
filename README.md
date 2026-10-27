@@ -7,7 +7,7 @@ GMGame 场景合并技能的公开分发包。版本：**1.2.4**。
 先准备 Node.js 18+（含 npm/npx）、Git 和 Python 3.11+。Windows、macOS、Linux 使用同一条命令：
 
 ```sh
-npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install
+npx --yes --prefer-online --allow-git=all "github:taozhang159/gm-scene-handoff#main" install
 ```
 
 首次安装和以后升级都运行这一条命令。发布分支 main 只放完整发布包；安装器校验文件、备份旧版、更新个人技能并保留其他配置。已完整安装相同版本时不会重复写盘或备份。
@@ -17,7 +17,7 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install
 如果 GMGame 仓库存在同名旧技能，在该仓库中运行：
 
 ```sh
-npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install --workspace .
+npx --yes --prefer-online --allow-git=all "github:taozhang159/gm-scene-handoff#main" install --workspace .
 ```
 
 可通过 `--python` 指定 Python，通过 `--user-home` / `--codex-home` 指定安装和配置目录。`--help` 显示全部选项，`--json` 输出结构化结果。
@@ -29,13 +29,13 @@ npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main install --wor
 npx 需要先获取发布包，技能不能在下载完成前输出进度。Windows PowerShell 推荐使用以下命令，按下回车即显示等待提示，随后输出下载日志。安装或更新：
 
 ```powershell
-Write-Host '正在获取最新技能并准备安装或更新，首次运行可能需要一些时间，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main install
+Write-Host '正在获取最新技能并准备安装或更新，首次运行可能需要一些时间，请稍候…'; npx --yes --prefer-online --allow-git=all --loglevel=http "github:taozhang159/gm-scene-handoff#main" install
 ```
 
 查询状态（不会安装或更新本地技能）：
 
 ```powershell
-Write-Host '正在获取发布信息并准备查询本地技能，请稍候…'; npx --yes --prefer-online --loglevel=http github:taozhang159/gm-scene-handoff#main status
+Write-Host '正在获取发布信息并准备查询本地技能，请稍候…'; npx --yes --prefer-online --allow-git=all --loglevel=http "github:taozhang159/gm-scene-handoff#main" status
 ```
 
 原来的纯 npx 命令仍可使用，但下载开始时可能暂时无输出。不显示无法测量的百分比。
@@ -43,7 +43,7 @@ Write-Host '正在获取发布信息并准备查询本地技能，请稍候…';
 ## 查询本地版本
 
 ```sh
-npx --yes --prefer-online github:taozhang159/gm-scene-handoff#main status
+npx --yes --prefer-online --allow-git=all "github:taozhang159/gm-scene-handoff#main" status
 ```
 
 `status` 只读查询个人目录中的实际安装版本、路径和文件完整性，同时显示本次获取的发布版本；未安装时明确提示未安装，不会偷偷安装。`--version` 仅显示下载包版本，不用于判断本地版本。
